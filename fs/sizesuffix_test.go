@@ -5,20 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Interface which flags must satisfy - only defined for _test.go
-// since we don't want to pull in pflag here
-type flagger interface {
-	pflag.Value
-	json.Unmarshaler
-}
-
-// Check it satisfies the interface
-var _ flagger = (*SizeSuffix)(nil)
+// Check it satisfies the interfaces
+var (
+	_ Flagger   = (*SizeSuffix)(nil)
+	_ FlaggerNP = SizeSuffix(0)
+)
 
 func TestSizeSuffixString(t *testing.T) {
 	for _, test := range []struct {
@@ -121,6 +116,11 @@ func TestSizeSuffixSet(t *testing.T) {
 		{"10G", 10 * 1024 * 1024 * 1024, false},
 		{"10T", 10 * 1024 * 1024 * 1024 * 1024, false},
 		{"10P", 10 * 1024 * 1024 * 1024 * 1024 * 1024, false},
+		{"7E", 7 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024, false},
+		{"8E", 0, true},
+		{"8Ei", 0, true},
+		{"8EiB", 0, true},
+		{"10E", 0, true},
 		{"off", -1, false},
 		{"OFF", -1, false},
 		{"", 0, true},
@@ -131,6 +131,8 @@ func TestSizeSuffixSet(t *testing.T) {
 		{"1i", 0, true},
 		{"1iB", 0, true},
 		{"1MB", 0, true},
+		{"nank", 0, true},
+		{"NaNM", 0, true},
 	} {
 		ss := SizeSuffix(0)
 		err := ss.Set(test.in)
